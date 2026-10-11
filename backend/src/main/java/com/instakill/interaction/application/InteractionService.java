@@ -3,11 +3,7 @@ package com.instakill.interaction.application;
 import com.instakill.common.clock.Clock;
 import com.instakill.common.error.NotFoundException;
 import com.instakill.common.id.IdGenerator;
-import com.instakill.interaction.domain.Comment;
-import com.instakill.interaction.domain.CommentRepository;
-import com.instakill.interaction.domain.Like;
-import com.instakill.interaction.domain.LikeCreatedEvent;
-import com.instakill.interaction.domain.LikeRepository;
+import com.instakill.interaction.domain.*;
 import com.instakill.post.domain.Post;
 import com.instakill.post.domain.PostRepository;
 import org.slf4j.Logger;
@@ -23,7 +19,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class InteractionService {
 
-    private static final Logger log = LoggerFactory.getLogger(InteractionService.class);
+
+    private final DomainEventPublisher eventPublisher;
 
     private final CommentRepository comments;
     private final LikeRepository likes;
@@ -35,12 +32,14 @@ public class InteractionService {
                               LikeRepository likes,
                               PostRepository posts,
                               IdGenerator idGenerator,
-                              Clock clock) {
+                              Clock clock,
+                              DomainEventPublisher publisher) {
         this.comments = comments;
         this.likes = likes;
         this.posts = posts;
         this.idGenerator = idGenerator;
         this.clock = clock;
+        this.eventPublisher = publisher;
     }
 
     @Transactional
@@ -75,8 +74,9 @@ public class InteractionService {
                     likes.save(like);
                     long likeCount = likes.countByPostId(postId);
                     posts.save(post.withLikeCount(likeCount).withUpdatedAt(now));
-                    // Direct logging instead of using DomainEventPublisher pattern
-                    log.debug("Like created event: postId={}, userId={}, timestamp={}", postId, userId, now);
+
+                    eventPublisher.publish(new LikeCreatedEvent(postId, userId, now));
+
                     return new ToggleLikeResult(true, likeCount);
                 });
     }
