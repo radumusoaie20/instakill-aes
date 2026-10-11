@@ -1,5 +1,6 @@
 package com.instakill.feed.application;
 
+import com.instakill.feed.domain.FeedSort;
 import com.instakill.post.domain.Post;
 import com.instakill.post.domain.PostRepository;
 import com.instakill.util.FeedRankingStrategiesUtil;
@@ -11,6 +12,7 @@ import java.util.List;
 
 import static com.instakill.util.PostUtil.post;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class FeedRankingStrategyTest {
@@ -27,6 +29,32 @@ public class FeedRankingStrategyTest {
 
         assertThat(result).hasSize(1);
         assertThat(result).isEqualTo(posts);
+    }
+
+    @Test
+    public void delegationToNewStrategyWorks() {
+
+        List<Post> posts = List.of(post(Instant.now(), 1, 1));
+
+        when(repository.findLatest(0, 5)).thenReturn(posts);
+
+        service.listFeed(FeedSort.NEW, 0, 5);
+
+        verify(repository).findLatest(0, 5);
+
+    }
+
+    @Test
+    public void delegationToTrendingStrategyWorks() {
+
+        List<Post> posts = List.of(post(Instant.now(), 1, 1));
+
+        when(repository.findTrending(0, 5)).thenReturn(posts);
+
+        service.listFeed(FeedSort.TRENDING, 0, 5);
+
+        verify(repository).findTrending(0, 5);
+
     }
     
 }
