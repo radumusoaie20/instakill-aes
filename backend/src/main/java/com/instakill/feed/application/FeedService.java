@@ -37,7 +37,11 @@ public class FeedService {
     }
 
     public List<Post> listFeed(FeedSort sort, int page, int size) {
-        
+
+        if(sort == null) {
+            sort = FeedSort.NEW;
+        }
+
         return strategyMap.get(sort).fetch(posts, page, size);
         
     }
