@@ -22,12 +22,11 @@ class TrendingFeedRankingStrategyTest {
     @Test
     void sortsTrendingFeedByLikesThenCommentsThenRecency() {
         Instant now = Instant.now();
-        List<Post> posts = List.of(
-                post(now.minusSeconds(60), 2, 5),
-                post(now.minusSeconds(30), 5, 1),
-                post(now.minusSeconds(10), 5, 3)
+        List<Post> trendingPosts = List.of(
+                post(now.minusSeconds(30), 5, 3),
+                post(now.minusSeconds(10), 5, 1)
         );
-        when(repository.findLatest(0, 10)).thenReturn(posts);
+        when(repository.findTrending(0, 2)).thenReturn(trendingPosts);
 
         List<Post> result = strategy.fetch(repository,0, 2);
 
