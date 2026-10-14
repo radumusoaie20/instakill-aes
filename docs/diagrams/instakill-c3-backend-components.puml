@@ -1,0 +1,228 @@
+@startuml InstakillC3BackendComponents
+
+' ============================================================================
+' C4 Model – Level 3: Component Diagram for the Instakill Backend Container
+' ============================================================================
+' Focuses on the backend container (Spring Boot 3 / Java 23).
+' Identifies its main internal components, grouped by architectural layer,
+' and shows how they depend on one another based on the actual source code.
+' Uses only native PlantUML syntax (no C4-PlantUML includes required).
+' ============================================================================
+
+title Component Diagram for the Instakill Backend
+
+top to bottom direction
+
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+
+skinparam rectangle {
+    RoundCorner 20
+    FontSize 12
+}
+
+skinparam database {
+    RoundCorner 12
+    FontSize 12
+}
+
+skinparam ArrowColor   #555555
+skinparam ArrowFontColor #333333
+skinparam ArrowFontSize  10
+
+' ──────────────────────────────────────────────
+' External Actors
+' ──────────────────────────────────────────────
+
+actor "Authenticated User\n\n[Person]\nUses server-rendered\nMVC pages." as user
+
+actor "Vue 3 SPA\n\n[Container: JavaScript]\nCalls REST endpoints\nover JSON / HTTP." as spa
+
+actor "External API Client\n\n[Person / System]\nCalls REST endpoints\nwith JWT access token." as apiClient
+
+' ──────────────────────────────────────────────
+' Backend Container Boundary
+' ──────────────────────────────────────────────
+
+rectangle "Application Backend  [Container: Spring Boot 3.3 / Java 23]" as backend {
+
+    ' ── API Layer (inbound adapters) ──────────
+
+    package "API Layer  (inbound adapters)" as apiLayer <<Rectangle>> #D9EAF7 {
+
+        rectangle "AuthWebController\n\n[Component: Spring MVC Controller]\nThymeleaf pages for login\nand registration forms.\nSets JWT cookie on success." as authWeb #D9EAF7
+
+        rectangle "FeedWebController\n\n[Component: Spring MVC Controller]\nServer-renders the feed page\nwith newest or trending sort." as feedWeb #D9EAF7
+
+        rectangle "PostWebController\n\n[Component: Spring MVC Controller]\nPost creation form, post detail,\ncomments and like toggle (MVC)." as postWeb #D9EAF7
+
+        rectangle "AuthRestController\n\n[Component: Spring REST Controller]\n/api/auth/login, /api/auth/register.\nReturns JWT in HttpOnly cookie\nand JSON body." as authRest #D9EAF7
+
+        rectangle "PostRestController\n\n[Component: Spring REST Controller]\n/api/posts, /api/feed,\n/api/posts/{id}/comments,\n/api/posts/{id}/likes/toggle.\nJSON CRUD for posts, feed,\ncomments, and likes." as postRest #D9EAF7
+
+        rectangle "UserRestController\n\n[Component: Spring REST Controller]\n/api/users/me, /api/users/{id}.\nReturns user profile data." as userRest #D9EAF7
+
+        rectangle "HealthController\n\n[Component: Spring REST Controller]\n/api/health endpoint.\nReturns {status: UP}." as healthRest #D9EAF7
+
+        rectangle "RestExceptionHandler\n\n[Component: @RestControllerAdvice]\nMaps domain exceptions and\nvalidation errors to RFC 7807\nProblemDetail responses." as exHandler #D9EAF7
+    }
+
+    ' ── Application Layer (use cases) ─────────
+
+    package "Application Layer  (use cases)" as appLayer <<Rectangle>> #B7D7A8 {
+
+        rectangle "AuthService\n\n[Component: Service]\nRegister and login use cases.\nHashes passwords, creates JWT\ntokens, validates credentials." as authSvc #B7D7A8
+
+        rectangle "UserService\n\n[Component: Service]\nUser lookup by ID.\nUsed by controllers to\nresolve post/comment authors." as userSvc #B7D7A8
+
+        rectangle "PostService\n\n[Component: Service]\nCreate, get, delete posts.\nDelegates feed queries to\nFeedService." as postSvc #B7D7A8
+
+        rectangle "FeedService\n\n[Component: Service]\nSelects ranking strategy\nby FeedSort enum and\ndelegates to strategy.\n(Strategy Pattern)" as feedSvc #B7D7A8
+
+        rectangle "InteractionService\n\n[Component: Service]\nLike toggle (with counter sync)\nand comment CRUD.\nPublishes domain events\nvia DomainEventPublisher." as interactionSvc #B7D7A8
+    }
+
+    ' ── Domain Layer (model + ports) ──────────
+
+    package "Domain Layer  (model, ports & strategies)" as domainLayer <<Rectangle>> #E2F0D9 {
+
+        rectangle "User\n\n[Domain Record]\nid, username, email,\npasswordHash, createdAt" as userDomain #E2F0D9
+
+        rectangle "Post\n\n[Domain Record]\nid, authorId, content,\nimageUrl, timestamps,\nlikeCount, commentCount" as postDomain #E2F0D9
+
+        rectangle "Comment / Like\n\n[Domain Records]\nComment and Like value objects\nwith post and author references." as interactionDomain #E2F0D9
+
+        rectangle "Repository Ports\n\n[Interfaces]\nUserRepository, PostRepository,\nCommentRepository, LikeRepository.\nDefine persistence contracts." as repoPorts #E2F0D9
+
+        rectangle "FeedRankingStrategy\n\n[Interface + Implementations]\n<<Strategy Pattern>>\nNewestFeedRankingStrategy\nTrendingFeedRankingStrategy\nEach queries PostRepository." as feedStrategies #E2F0D9
+
+        rectangle "DomainEventPublisher\n\n[Interface]\nPublisher port for domain events.\nLikeCreatedEvent emitted on like.\nNoOpDomainEventPublisher (default)." as eventPublisher #E2F0D9
+    }
+
+    ' ── Common / Cross-cutting ────────────────
+
+    package "Common  (cross-cutting)" as commonLayer <<Rectangle>> #FFF2CC {
+
+        rectangle "Clock / IdGenerator\n\n[Interfaces + Impls]\nSystemClock, UuidGenerator.\nAbstract time and UUID\ngeneration for testability." as clockId #FFF2CC
+
+        rectangle "Mappers\n\n[Static Utility Classes]\nPostMapper, UserMapper,\nCommentMapper, LikeMapper.\nEntity ↔ Domain conversion." as mappers #FFF2CC
+
+        rectangle "Typed Exceptions\n\n[Exception Classes]\nNotFoundException, ConflictException,\nBadRequestException, ForbiddenException,\nUnauthorizedException, ValidationException.\nAll extend InstakillException." as errors #FFF2CC
+
+        rectangle "RequestIdFilter\n\n[Servlet Filter]\nSets X-Request-Id header\nand MDC for log correlation." as requestFilter #FFF2CC
+    }
+
+    ' ── Infrastructure Layer (outbound adapters) ─
+
+    package "Infrastructure Layer  (outbound adapters)" as infraLayer <<Rectangle>> #F9CB9C {
+
+        rectangle "JPA Repository Adapters\n\n[Components: @Repository]\nUserJpaRepositoryAdapter,\nPostJpaRepositoryAdapter,\nCommentJpaRepositoryAdapter,\nLikeJpaRepositoryAdapter.\nImplement domain repository ports\nusing Spring Data JPA." as jpaAdapters #F9CB9C
+
+        rectangle "JPA Entities\n\n[Persistence Model]\nUserEntity, PostEntity,\nCommentEntity, LikeEntity.\nHibernate-managed @Entity classes." as jpaEntities #F9CB9C
+
+        rectangle "Spring Data Repositories\n\n[Interfaces: JpaRepository]\nJpaUserRepository,\nJpaPostRepository,\nJpaCommentRepository,\nJpaLikeRepository.\nAuto-implemented by Spring Data." as springDataRepos #F9CB9C
+
+        rectangle "Security Infrastructure\n\n[Components]\nSecurityConfig – filter chains\n(API stateless + Web session).\nJwtTokenService – create / parse JWT.\nJwtAuthenticationFilter – extract\nJWT from ACCESS_TOKEN cookie.\nJwtProperties – config binding." as security #F9CB9C
+
+        rectangle "DataInitializer\n\n[Component: ApplicationRunner]\nSeeds alice + bob users, posts,\ncomments, and likes on first run.\nActive in non-test profile." as dataInit #F9CB9C
+    }
+}
+
+' ──────────────────────────────────────────────
+' External: Database
+' ──────────────────────────────────────────────
+
+database "SQLite Database\n\n[Container: SQLite 3.46]\ninstakill.db file.\nStores users, posts,\ncomments, and likes." as db #F9CB9C
+
+' ==============================================================
+' RELATIONSHIPS
+' ==============================================================
+
+' ── Actors → API Layer ──
+
+user --> authWeb   : Login / Register forms\n[HTTPS]
+user --> feedWeb   : Browses feed\n[HTTPS]
+user --> postWeb   : Creates posts, comments,\ntoggles likes\n[HTTPS]
+
+spa --> authRest   : /api/auth/**\n[JSON / HTTP]
+spa --> postRest   : /api/posts, /api/feed,\ncomments, likes\n[JSON / HTTP]
+spa --> userRest   : /api/users/me\n[JSON / HTTP]
+
+apiClient --> authRest  : Authenticates\n[JSON / HTTP]
+apiClient --> postRest  : CRUD posts and interactions\n[JSON / HTTP]
+apiClient --> healthRest : Health check\n[HTTP GET]
+
+' ── API Layer → Application Layer ──
+
+authWeb  --> authSvc         : Delegates login/register
+feedWeb  --> postSvc         : Requests feed listing
+postWeb  --> postSvc         : Creates / retrieves posts
+postWeb  --> interactionSvc  : Adds comments, toggles likes
+postWeb  --> userSvc         : Resolves author info
+
+authRest --> authSvc         : Delegates login/register
+postRest --> postSvc         : CRUD posts, feed queries
+postRest --> interactionSvc  : Comments and likes
+postRest --> userSvc         : Resolves author info
+userRest --> userSvc         : User lookup
+
+exHandler --> errors         : Maps domain exceptions\nto ProblemDetail
+
+' ── Application Layer → Domain Layer ──
+
+authSvc        --> userDomain         : Creates User records
+authSvc        --> repoPorts          : UserRepository.save / find
+postSvc        --> postDomain         : Creates Post records
+postSvc        --> repoPorts          : PostRepository.save / find / delete
+postSvc        --> feedSvc            : Delegates feed queries
+feedSvc        --> feedStrategies     : Selects strategy by FeedSort\nand calls fetch()
+feedStrategies --> repoPorts          : Queries PostRepository\n(findLatest / findTrending)
+interactionSvc --> interactionDomain  : Creates Comment / Like records
+interactionSvc --> repoPorts          : Comment / Like / Post repositories
+interactionSvc --> eventPublisher     : Publishes LikeCreatedEvent
+
+' ── Application Layer → Common ──
+
+authSvc        --> clockId  : Clock, IdGenerator
+postSvc        --> clockId  : Clock, IdGenerator
+interactionSvc --> clockId  : Clock, IdGenerator
+
+' ── Application Layer → Security ──
+
+authSvc --> security : Uses JwtTokenService\nand PasswordEncoder
+
+' ── Security → API Layer ──
+
+security --> authWeb  : JwtAuthenticationFilter\nintercepts requests
+security --> authRest : JwtAuthenticationFilter\nintercepts requests
+
+' ── Infrastructure → Domain (implements ports) ──
+
+jpaAdapters --> repoPorts      : Implements repository\ninterfaces
+jpaAdapters --> jpaEntities    : Persists / reads entities
+jpaAdapters --> springDataRepos : Delegates to Spring Data
+jpaAdapters --> mappers        : Entity ↔ Domain conversion
+
+springDataRepos --> db : Reads and writes data\n[JDBC / JPA\nHibernate SQLite dialect]
+
+' ── DataInitializer → Application ──
+
+dataInit --> authSvc        : Seeds users
+dataInit --> postSvc        : Seeds posts
+dataInit --> interactionSvc : Seeds comments and likes
+
+' ──────────────────────────────────────────────
+' Legend
+' ──────────────────────────────────────────────
+
+legend right
+    |= Colour |= Architectural Layer |
+    |<#D9EAF7> Blue | API / Inbound Adapters (REST + MVC controllers) |
+    |<#B7D7A8> Green | Application Services (use-case orchestration) |
+    |<#E2F0D9> Light green | Domain Model, Ports, Strategies & Events |
+    |<#FFF2CC> Yellow | Common / Cross-cutting (clock, IDs, mappers, errors) |
+    |<#F9CB9C> Orange | Infrastructure / Outbound Adapters (JPA, security, DB) |
+endlegend
+
+@enduml
