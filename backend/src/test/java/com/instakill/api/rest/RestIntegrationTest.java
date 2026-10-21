@@ -44,9 +44,22 @@ class RestIntegrationTest {
         JsonNode registerJson = objectMapper.readTree(registerResult.getResponse().getContentAsString());
         assertThat(registerJson.get("user").get("username").asText()).isEqualTo("restuser");
 
+        // Upload media file
+        org.springframework.mock.web.MockMultipartFile mediaFile = new org.springframework.mock.web.MockMultipartFile(
+                "file", "integration.png", "image/png", "integration-image".getBytes()
+        );
+        MvcResult mediaResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/media")
+                        .file(mediaFile)
+                        .cookie(token))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode mediaJson = objectMapper.readTree(mediaResult.getResponse().getContentAsString());
+        String mediaUrl = mediaJson.get("mediaUrl").asText();
+        assertThat(mediaUrl).startsWith("/media/").endsWith(".png");
+
         String createPostPayload = "{" +
                 "\"content\":\"Integration content\"," +
-                "\"imageUrl\":null" +
+                "\"imageUrl\":\"" + mediaUrl + "\"" +
                 "}";
         MvcResult postResult = mockMvc.perform(post("/api/posts")
                         .cookie(token)

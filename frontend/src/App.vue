@@ -27,9 +27,34 @@
       <section v-else class="feed">
         <form @submit.prevent="createNewPost" class="card form composer">
           <textarea v-model="composer.content" rows="3" placeholder="Share something..." required></textarea>
-          <input v-model="composer.imageUrl" placeholder="Image URL (optional)">
+
+          <div class="file-upload-row">
+            <label class="file-input-label">Attach Media (Image / Video):</label>
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm"
+              @change="handleFileUpload"
+              :disabled="isUploading"
+            />
+            <div v-if="isUploading" class="upload-status">Uploading media...</div>
+            <div v-if="uploadError" class="error">{{ uploadError }}</div>
+
+            <div class="or-divider">— or paste an image/video URL —</div>
+            <input v-model="composer.imageUrl" placeholder="Image or Video URL (optional)" :disabled="isUploading">
+
+            <div v-if="composer.imageUrl" class="media-preview-container">
+              <div class="media-preview-header">
+                <span>Attached: <code>{{ composer.imageUrl }}</code></span>
+                <button type="button" @click="clearMedia">Remove</button>
+              </div>
+              <video v-if="isVideo(composer.imageUrl)" :src="composer.imageUrl" controls class="preview-media"></video>
+              <img v-else :src="composer.imageUrl" alt="Preview" class="preview-media">
+            </div>
+          </div>
+
           <div class="actions">
-            <button type="submit">Post</button>
+            <button type="submit" :disabled="isUploading">{{ isUploading ? 'Uploading...' : 'Post' }}</button>
           </div>
         </form>
 
@@ -54,7 +79,8 @@
             </div>
           </header>
           <p>{{ post.content }}</p>
-          <img v-if="post.imageUrl" :src="post.imageUrl" alt="post image">
+          <video v-if="post.imageUrl && isVideo(post.imageUrl)" :src="post.imageUrl" controls></video>
+          <img v-else-if="post.imageUrl" :src="post.imageUrl" alt="post image">
           
           <!-- Comments Section -->
           <section class="comments">
@@ -92,7 +118,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { createPost, fetchMe, listFeed, login, register as registerUser, toggleLike, listComments, addComment } from './api'
+import { createPost, fetchMe, listFeed, login, register as registerUser, toggleLike, listComments, addComment, uploadMedia } from './api'
 
 const user = ref(null)
 const posts = ref([])
@@ -101,6 +127,38 @@ const authMode = ref('login')
 const error = ref('')
 const authForm = reactive({ username: '', email: '', password: '', usernameOrEmail: '' })
 const composer = reactive({ content: '', imageUrl: '' })
+const isUploading = ref(false)
+const uploadError = ref('')
+const fileInputRef = ref(null)
+
+function isVideo(url) {
+  if (!url) return false
+  const clean = url.split('?')[0].toLowerCase()
+  return clean.endsWith('.mp4') || clean.endsWith('.mov') || clean.endsWith('.webm') || clean.endsWith('.avi') || clean.endsWith('.mkv')
+}
+
+async function handleFileUpload(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  uploadError.value = ''
+  isUploading.value = true
+  try {
+    const res = await uploadMedia(file)
+    composer.imageUrl = res.mediaUrl
+  } catch (e) {
+    uploadError.value = e.response?.data?.detail || e.response?.data?.message || 'Failed to upload media file'
+  } finally {
+    isUploading.value = false
+  }
+}
+
+function clearMedia() {
+  composer.imageUrl = ''
+  uploadError.value = ''
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
 
 // Comments state
 const comments = reactive({})
@@ -181,10 +239,14 @@ async function submitComment(postId) {
 }
 
 async function createNewPost() {
-  if (!composer.content.trim()) return
+  if (!composer.content.trim() || isUploading.value) return
   await createPost({ content: composer.content, imageUrl: composer.imageUrl || null })
   composer.content = ''
   composer.imageUrl = ''
+  uploadError.value = ''
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
   await loadFeed()
 }
 
@@ -327,10 +389,75 @@ async function logout() {
   margin-bottom: 0.75rem;
 }
 
-.post img {
+.post img,
+.post video {
   margin-top: 0.75rem;
   width: 100%;
+  max-height: 500px;
   border-radius: 12px;
+  object-fit: contain;
+  background: #000;
+}
+
+.file-upload-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.file-input-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.upload-status {
+  font-size: 0.85rem;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.or-divider {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  text-align: center;
+  margin: 0.2rem 0;
+}
+
+.media-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.media-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.media-preview-header button {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.preview-media {
+  max-width: 100%;
+  max-height: 250px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: #000;
 }
 
 .post footer {
