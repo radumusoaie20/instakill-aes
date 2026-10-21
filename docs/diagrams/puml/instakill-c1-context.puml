@@ -1,14 +1,14 @@
 @startuml Instakill_C1_Context
 
 ' ============================================================================
-' C4 Model – Level 1: System Context Diagram for Instakill
+' C4 Model – Level 1: Context Diagram for Instakill
 ' ============================================================================
 ' Shows Instakill as a single system box within its environment.
 ' Identifies external actors and their main interactions.
 ' Uses only native PlantUML syntax (no C4-PlantUML includes required).
 ' ============================================================================
 
-title System Context Diagram for Instakill
+title Context Diagram for Instakill
 
 top to bottom direction
 
