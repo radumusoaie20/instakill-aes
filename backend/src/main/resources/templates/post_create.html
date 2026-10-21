@@ -10,12 +10,50 @@
                 <textarea th:field="*{content}" rows="4"></textarea>
             </label>
             <div class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}"></div>
-            <label>Image URL
-                <input type="text" th:field="*{imageUrl}" placeholder="https://..."/>
+            <label>Upload Media (Image / Video)
+                <input type="file" id="mediaUploadInput" accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm"/>
+            </label>
+            <div id="uploadStatus" style="font-size: 0.85rem; color: #2563eb; display: none; margin-bottom: 0.5rem;"></div>
+            <label>Image / Media URL
+                <input type="text" th:field="*{imageUrl}" id="imageUrl" placeholder="/media/... or https://..."/>
             </label>
             <div class="error" th:if="${#fields.hasErrors('imageUrl')}" th:errors="*{imageUrl}"></div>
             <button type="submit">Publish</button>
         </form>
+        <script>
+            const fileInput = document.getElementById('mediaUploadInput');
+            const imageUrlInput = document.getElementById('imageUrl');
+            const statusDiv = document.getElementById('uploadStatus');
+            if (fileInput && imageUrlInput) {
+                fileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    statusDiv.style.display = 'block';
+                    statusDiv.innerText = 'Uploading media...';
+                    statusDiv.style.color = '#2563eb';
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        const response = await fetch('/api/media', {
+                            method: 'POST',
+                            body: formData,
+                            credentials: 'include'
+                        });
+                        if (!response.ok) {
+                            const error = await response.json().catch(() => ({}));
+                            throw new Error(error.detail || error.title || 'Upload failed');
+                        }
+                        const data = await response.json();
+                        imageUrlInput.value = data.mediaUrl;
+                        statusDiv.innerText = 'Uploaded: ' + data.mediaUrl;
+                        statusDiv.style.color = 'green';
+                    } catch (err) {
+                        statusDiv.innerText = err.message || 'Upload failed';
+                        statusDiv.style.color = 'red';
+                    }
+                });
+            }
+        </script>
     </section>
 </div>
 </body>

@@ -7,6 +7,10 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
 server:
   servlet:
     context-path: /
@@ -20,6 +24,7 @@ management:
     web:
       exposure:
         include: health,info
+
 instakill:
   jwt:
     secret: change-me-change-me-change-me-change-me-change-me-secret-key-1234
@@ -28,3 +33,8 @@ instakill:
 logging:
   level:
     org.hibernate.SQL: warn
+
+media:
+  base-path: media
+
+
