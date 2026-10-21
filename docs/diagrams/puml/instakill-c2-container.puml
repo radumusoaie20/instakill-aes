@@ -1,0 +1,115 @@
+@startuml InstakillC2Container
+
+' ============================================================================
+' C4 Model – Level 2: Container Diagram for Instakill
+' ============================================================================
+' Breaks the Instakill system into its main deployable containers,
+' indicates the technologies used by each, and shows how they communicate.
+' Uses only native PlantUML syntax (no C4-PlantUML includes required).
+' ============================================================================
+
+title Container Diagram for Instakill
+
+top to bottom direction
+
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+
+skinparam rectangle {
+    RoundCorner 20
+    FontSize 13
+}
+
+skinparam database {
+    RoundCorner 12
+    FontSize 13
+}
+
+skinparam ArrowColor   #555555
+skinparam ArrowFontColor #333333
+skinparam ArrowFontSize  11
+
+' ──────────────────────────────────────────────
+' External Actors
+' ──────────────────────────────────────────────
+
+actor "Visitor\n\n[Person]\nBrowses public pages,\nregisters, or signs in." as visitor
+
+actor "Authenticated User\n\n[Person]\nCreates posts, browses\nfeed, likes, comments." as authUser
+
+actor "External API Client\n\n[Person / System]\nConsumes the REST API\nwith a JWT access token." as apiClient
+
+' ──────────────────────────────────────────────
+' System Boundary
+' ──────────────────────────────────────────────
+
+rectangle "Instakill System" as system {
+
+    ' ── Frontend Container ──────────────────
+
+    rectangle "Single-Page Application\n\n[Container: Vue 3 / JavaScript]\nServed by Vite dev server on port 5173.\nUses Axios (withCredentials) to call\nthe backend REST API.\nProxies /api and /auth to the backend.\nProvides login/register, post composer,\nfeed (newest + trending), likes,\nand comments UI." as spa #D9EAF7
+
+    ' ── Backend Container ───────────────────
+
+    rectangle "Application Backend\n\n[Container: Spring Boot 3.3 / Java 23]\nExposes two delivery channels:\n• RESTful JSON API (/api/**)\n• Server-rendered Thymeleaf MVC pages\nUses Spring Security with stateless\nJWT authentication (HttpOnly cookie).\nIncludes Swagger/OpenAPI UI at /api/swagger\nand Spring Boot Actuator health endpoint.\nBusiness logic organised in domain modules:\nUser, Post, Feed, Interaction." as backend #B7D7A8
+
+    ' ── Database Container ──────────────────
+
+    database "SQLite Database\n\n[Container: SQLite 3.46]\nFile-based relational database\n(instakill.db).\nAccessed via JDBC driver +\nSpring Data JPA / Hibernate\n(SQLite community dialect).\nStores users, posts,\ncomments, and likes." as db #F9CB9C
+
+    ' ── Static Assets Container ─────────────
+
+    rectangle "Server-Rendered Pages\n\n[Container: Thymeleaf Templates / CSS]\nHTML templates (layout, feed, login,\nregister, post create/detail) and\nstatic CSS served by the backend\nfor the MVC delivery channel." as ssr #E8D5F5
+}
+
+' ──────────────────────────────────────────────
+' External System
+' ──────────────────────────────────────────────
+
+rectangle "External Image Hosting\n\n[External System]\ne.g. Unsplash\nHosts post images\nlinked by URL." as imageHost #E8E8E8
+
+' ──────────────────────────────────────────────
+' Relationships – Actors → Containers
+' ──────────────────────────────────────────────
+
+visitor --> ssr : Browses login and\nregistration pages\n[HTTPS]
+visitor --> spa : Opens the Vue SPA\nin a web browser\n[HTTPS – port 5173]
+
+authUser --> spa : Composes posts, browses feed,\nlikes, comments, logs out\n[HTTPS – port 5173]
+authUser --> ssr : Uses server-rendered\nfeed and post pages\n[HTTPS – port 8080]
+
+apiClient --> backend : Calls REST endpoints\n[JSON over HTTP\nJWT access token]
+
+' ──────────────────────────────────────────────
+' Relationships – Container ↔ Container
+' ──────────────────────────────────────────────
+
+spa --> backend : Calls /api/** REST endpoints\n[JSON over HTTP\nJWT in HttpOnly cookie\nVite proxy → localhost:8080]
+
+backend --> db : Reads and writes\napplication data\n[JDBC / Spring Data JPA\nHibernate SQLite dialect]
+
+backend --> ssr : Renders Thymeleaf\ntemplates with model data\n[Internal – template engine]
+
+' ──────────────────────────────────────────────
+' Relationships – External Systems
+' ──────────────────────────────────────────────
+
+spa ..> imageHost : Loads post images\nby URL in <img> tags\n[HTTPS]
+ssr ..> imageHost : Renders post image\nURLs in HTML pages\n[HTTPS]
+
+' ──────────────────────────────────────────────
+' Legend
+' ──────────────────────────────────────────────
+
+legend right
+    |= Element |= Technology |
+    |<#D9EAF7> Single-Page Application | Vue 3.4, Vite 5.4, Axios, JavaScript |
+    |<#B7D7A8> Application Backend | Spring Boot 3.3, Java 23, Spring Security, JWT, Spring Data JPA, Swagger / OpenAPI, Actuator |
+    |<#E8D5F5> Server-Rendered Pages | Thymeleaf templates, static CSS |
+    |<#F9CB9C> SQLite Database | SQLite 3.46, Hibernate community dialect, JDBC |
+    |<#E8E8E8> External System | Outside the system boundary |
+    | Actor | Person or external client |
+endlegend
+
+@enduml

@@ -1,0 +1,174 @@
+@startuml InstakillBackendComponents
+
+title Component Diagram for Instakill
+
+top to bottom direction
+
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+skinparam rectangle {
+    RoundCorner 16
+    FontSize 12
+}
+
+skinparam database {
+    RoundCorner 12
+    FontSize 12
+}
+
+skinparam ArrowColor #555555
+skinparam ArrowFontColor #333333
+skinparam ArrowFontSize 10
+
+' ============================================================
+' External systems and users
+' ============================================================
+
+actor "Authenticated User" as user
+actor "Vue SPA / API Client" as client
+
+' ============================================================
+' Backend container
+' ============================================================
+
+rectangle "Application Backend\nSpring Boot 3 / Java 23" as backend {
+
+    ' --------------------------------------------------------
+    ' Inbound adapters
+    ' --------------------------------------------------------
+
+    package "Inbound Adapters" as inbound #D9EAF7 {
+
+        rectangle "Web Controllers\n\nAuthWebController\nFeedWebController\nPostWebController" as webControllers #D9EAF7
+
+        rectangle "REST Controllers\n\nAuthRestController\nPostRestController\nUserRestController\nHealthController" as restControllers #D9EAF7
+
+        rectangle "REST Exception Handler\n\nMaps domain errors to\nProblemDetail responses" as exceptionHandler #D9EAF7
+    }
+
+    ' --------------------------------------------------------
+    ' Application services
+    ' --------------------------------------------------------
+
+    package "Application Services" as application #B7D7A8 {
+
+        rectangle "AuthService\n\nRegistration, login,\npassword validation and JWT creation" as authService #B7D7A8
+
+        rectangle "PostService\n\nPost creation, retrieval,\ndelete operations and feed access" as postService #B7D7A8
+
+        rectangle "FeedService\n\nSelects the feed ranking strategy" as feedService #B7D7A8
+
+        rectangle "InteractionService\n\nComments and like toggling" as interactionService #B7D7A8
+
+        rectangle "UserService\n\nUser lookup and profile access" as userService #B7D7A8
+    }
+
+    ' --------------------------------------------------------
+    ' Domain model and ports
+    ' --------------------------------------------------------
+
+    package "Domain Model and Ports" as domain #E2F0D9 {
+
+        rectangle "Domain Model\n\nUser, Post, Comment, Like" as domainModel #E2F0D9
+
+        rectangle "Repository Ports\n\nUserRepository\nPostRepository\nCommentRepository\nLikeRepository" as repositoryPorts #E2F0D9
+
+        rectangle "Feed Ranking Strategies\n\nNewestFeedRankingStrategy\nTrendingFeedRankingStrategy" as feedStrategies #E2F0D9
+
+        rectangle "Domain Events\n\nDomainEventPublisher\nLikeCreatedEvent" as domainEvents #E2F0D9
+    }
+
+    ' --------------------------------------------------------
+    ' Outbound adapters
+    ' --------------------------------------------------------
+
+    package "Outbound Adapters" as outbound #F9CB9C {
+
+        rectangle "Persistence Adapters\n\nJPA repository adapters\nand entity mappers" as persistenceAdapters #F9CB9C
+
+        rectangle "Spring Data Repositories\n\nJpaUserRepository\nJpaPostRepository\nJpaCommentRepository\nJpaLikeRepository" as springData #F9CB9C
+
+        rectangle "Security Infrastructure\n\nJWT token service\nJWT authentication filter\npassword encoder" as security #F9CB9C
+
+        rectangle "DataInitializer\n\nSeeds sample users,\nposts and interactions" as dataInitializer #F9CB9C
+    }
+}
+
+database "SQLite Database\n\nUsers, posts,\ncomments and likes" as database #F9CB9C
+
+' ============================================================
+' External interactions
+' ============================================================
+
+user --> webControllers : Server-rendered pages
+client --> restControllers : JSON / HTTP
+
+' ============================================================
+' Inbound adapters to application services
+' ============================================================
+
+webControllers --> authService : Login / registration
+webControllers --> postService : Feed and posts
+webControllers --> interactionService : Comments and likes
+webControllers --> userService : Author details
+
+restControllers --> authService : Authentication
+restControllers --> postService : Posts and feed
+restControllers --> interactionService : Comments and likes
+restControllers --> userService : User profiles
+
+exceptionHandler ..> inbound : Handles controller errors
+
+' ============================================================
+' Application services to domain
+' ============================================================
+
+authService --> repositoryPorts : User persistence
+authService --> domainModel : Creates users
+
+postService --> repositoryPorts : Post persistence
+postService --> domainModel : Creates posts
+postService --> feedService : Requests feed
+
+feedService --> feedStrategies : Selects strategy
+feedStrategies --> repositoryPorts : Queries posts
+
+interactionService --> repositoryPorts : Comments, likes and posts
+interactionService --> domainModel : Creates interactions
+interactionService --> domainEvents : Publishes events
+
+userService --> repositoryPorts : Loads users
+
+' ============================================================
+' Infrastructure implementations
+' ============================================================
+
+persistenceAdapters ..|> repositoryPorts : Implements
+persistenceAdapters --> springData : Uses
+persistenceAdapters --> domainModel : Maps entities
+
+springData --> database : Reads and writes
+
+security ..> restControllers : Protects API endpoints
+security ..> webControllers : Supports authenticated MVC requests
+
+dataInitializer --> authService : Seeds users
+dataInitializer --> postService : Seeds posts
+dataInitializer --> interactionService : Seeds interactions
+
+' ============================================================
+' Legend
+' ============================================================
+
+legend right
+    |= Colour |= Layer |
+    |<#D9EAF7> Blue | Inbound adapters |
+    |<#B7D7A8> Green | Application services |
+    |<#E2F0D9> Light green | Domain model and ports |
+    |<#F9CB9C> Orange | Outbound adapters and database |
+endlegend
+
+@enduml

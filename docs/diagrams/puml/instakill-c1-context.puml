@@ -1,0 +1,93 @@
+@startuml Instakill_C1_Context
+
+' ============================================================================
+' C4 Model – Level 1: Context Diagram for Instakill
+' ============================================================================
+' Shows Instakill as a single system box within its environment.
+' Identifies external actors and their main interactions.
+' Uses only native PlantUML syntax (no C4-PlantUML includes required).
+' ============================================================================
+
+title Context Diagram for Instakill
+
+top to bottom direction
+
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam packageStyle rectangle
+
+skinparam rectangle {
+    RoundCorner 20
+    FontSize 13
+}
+
+skinparam database {
+    RoundCorner 12
+}
+
+skinparam ArrowColor   #555555
+skinparam ArrowFontColor #333333
+skinparam ArrowFontSize  11
+
+' ──────────────────────────────────────────────
+' External Actors (People)
+' ──────────────────────────────────────────────
+
+actor "Visitor\n\n[Person]\nAn unauthenticated person\nwho can browse public pages,\nsign in, or register a\nnew account." as visitor
+
+actor "Authenticated User\n\n[Person]\nA registered user who\ncreates posts, browses feeds\n(newest / trending), likes\nposts, and writes comments." as authUser
+
+actor "External API Client\n\n[Person / System]\nA third-party application\nor integration that consumes\nInstakill's REST API using\na JWT access token." as apiClient
+
+' ──────────────────────────────────────────────
+' System Under Design
+' ──────────────────────────────────────────────
+
+rectangle "Instakill\n\n[Software System]\nAn Instagram-style social feed application\nthat lets users create and share posts,\nbrowse a ranked feed, like posts,\nand comment on them.\n\nExposes server-rendered (Thymeleaf) pages,\na Vue 3 SPA frontend, and a RESTful JSON API.\nAuthentication is handled via JWT tokens\nstored in HttpOnly cookies." as instakill #D9EAF7
+
+' ──────────────────────────────────────────────
+' External Systems
+' ──────────────────────────────────────────────
+
+rectangle "External Image Hosting\n\n[External System]\nThird-party image services\n(e.g. Unsplash) that host\npost images linked by URL." as imageHost #E8E8E8
+
+rectangle "Spring Boot Actuator\n\n[Monitoring Endpoint]\nExposes /actuator/health\nfor infrastructure health\nchecks and uptime monitoring." as monitoring #E8E8E8
+
+' ──────────────────────────────────────────────
+' Relationships – Visitor
+' ──────────────────────────────────────────────
+
+visitor --> instakill : Browses public pages (home,\nlogin, registration) and\ncreates a new account\n[HTTPS]
+
+' ──────────────────────────────────────────────
+' Relationships – Authenticated User
+' ──────────────────────────────────────────────
+
+authUser --> instakill : Logs in, creates posts,\nbrowses feed (newest / trending),\nlikes and unlikes posts,\nwrites comments, and logs out\n[HTTPS – JWT in HttpOnly cookie]
+
+' ──────────────────────────────────────────────
+' Relationships – External API Client
+' ──────────────────────────────────────────────
+
+apiClient --> instakill : Authenticates via /api/auth,\nmanages posts and interactions\nthrough the REST API\n[JSON over HTTP – JWT access token]
+
+' ──────────────────────────────────────────────
+' Relationships – External Systems
+' ──────────────────────────────────────────────
+
+instakill ..> imageHost : Renders user-supplied image\nURLs in posts and feed\n[HTTPS – outbound links]
+
+monitoring ..> instakill : Probes application health\n[HTTP GET /actuator/health]
+
+' ──────────────────────────────────────────────
+' Legend
+' ──────────────────────────────────────────────
+
+legend right
+    |= Element |= Description |
+    |<#D9EAF7> Instakill | Software system under design |
+    |<#E8E8E8> External system | System outside the project boundary |
+    | Actor | Person or external client interacting with Instakill |
+endlegend
+
+@enduml
