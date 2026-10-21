@@ -22,7 +22,10 @@
                 </div>
             </div>
             <p th:text="${post.content()}"></p>
-            <img th:if="${post.imageUrl()}" th:src="${post.imageUrl()}" alt="Post image"/>
+            <video th:if="${post.imageUrl() != null and (#strings.endsWith(post.imageUrl().toLowerCase(), '.mp4') or #strings.endsWith(post.imageUrl().toLowerCase(), '.mov') or #strings.endsWith(post.imageUrl().toLowerCase(), '.webm') or #strings.endsWith(post.imageUrl().toLowerCase(), '.avi') or #strings.endsWith(post.imageUrl().toLowerCase(), '.mkv'))}"
+                   th:src="${post.imageUrl()}" controls style="width: 100%; border-radius: 12px;"></video>
+            <img th:if="${post.imageUrl() != null and not (#strings.endsWith(post.imageUrl().toLowerCase(), '.mp4') or #strings.endsWith(post.imageUrl().toLowerCase(), '.mov') or #strings.endsWith(post.imageUrl().toLowerCase(), '.webm') or #strings.endsWith(post.imageUrl().toLowerCase(), '.avi') or #strings.endsWith(post.imageUrl().toLowerCase(), '.mkv'))}"
+                 th:src="${post.imageUrl()}" alt="Post image"/>
             <div class="post-actions">
                 <form th:action="@{'/posts/' + ${post.id()} + '/likes'}" method="post">
                     <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
