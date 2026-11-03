@@ -15,6 +15,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,9 +62,21 @@ class MediaControllerTest {
         assertThat(authCookie).isNotNull();
     }
 
+    private byte[] createTestImage(int width, int height) throws IOException {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = image.createGraphics();
+        g2d.setColor(Color.GREEN);
+        g2d.fillRect(0, 0, width, height);
+        g2d.dispose();
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", baos);
+        return baos.toByteArray();
+    }
+
     @Test
     void uploadImageSuccessAndStaticServing() throws Exception {
-        byte[] fileBytes = "fake-png-content".getBytes();
+        byte[] fileBytes = createTestImage(500, 300);
         MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", fileBytes);
 
         MvcResult result = mockMvc.perform(multipart("/api/media")
@@ -73,13 +92,20 @@ class MediaControllerTest {
         String filename = mediaUrl.substring("/media/".length());
         Path filePath = Paths.get(mediaBasePath).resolve(filename).toAbsolutePath().normalize();
         assertThat(Files.exists(filePath)).isTrue();
-        assertThat(Files.readAllBytes(filePath)).isEqualTo(fileBytes);
+
+        // Check image was processed: scaled down to width 300
+        BufferedImage savedImage = ImageIO.read(filePath.toFile());
+        assertThat(savedImage).isNotNull();
+        assertThat(savedImage.getWidth()).isEqualTo(300);
 
         // Test static serving through Spring
         MvcResult getResult = mockMvc.perform(get(mediaUrl))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertThat(getResult.getResponse().getContentAsByteArray()).isEqualTo(fileBytes);
+        byte[] servedBytes = getResult.getResponse().getContentAsByteArray();
+        BufferedImage servedImage = ImageIO.read(new ByteArrayInputStream(servedBytes));
+        assertThat(servedImage).isNotNull();
+        assertThat(servedImage.getWidth()).isEqualTo(300);
     }
 
     @Test
@@ -97,7 +123,7 @@ class MediaControllerTest {
         String mediaUrl = json.get("mediaUrl").asText();
         assertThat(mediaUrl).startsWith("/media/").endsWith(".mp4");
 
-        // Test static serving of the video file
+        // Test static serving of the video file (preserved as is)
         MvcResult getResult = mockMvc.perform(get(mediaUrl))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -106,7 +132,8 @@ class MediaControllerTest {
 
     @Test
     void uploadRequiresAuthentication() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "pic.jpg", "image/jpeg", "image-content".getBytes());
+        byte[] fileBytes = createTestImage(100, 100);
+        MockMultipartFile file = new MockMultipartFile("file", "pic.jpg", "image/jpeg", fileBytes);
 
         mockMvc.perform(multipart("/api/media")
                         .file(file))

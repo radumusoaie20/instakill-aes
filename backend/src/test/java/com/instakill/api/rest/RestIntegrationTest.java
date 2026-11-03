@@ -2,6 +2,7 @@ package com.instakill.api.rest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -11,7 +12,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import jakarta.servlet.http.Cookie;
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,6 +36,17 @@ class RestIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private byte[] createTestImage() throws IOException {
+        BufferedImage image = new BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = image.createGraphics();
+        g2d.setColor(Color.RED);
+        g2d.fillRect(0, 0, 100, 100);
+        g2d.dispose();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", baos);
+        return baos.toByteArray();
+    }
+
     @Test
     void fullRestFlow() throws Exception {
         String registerPayload = objectMapper.writeValueAsString(new AuthPayload("restuser", "rest@example.com", "password"));
@@ -46,7 +63,7 @@ class RestIntegrationTest {
 
         // Upload media file
         org.springframework.mock.web.MockMultipartFile mediaFile = new org.springframework.mock.web.MockMultipartFile(
-                "file", "integration.png", "image/png", "integration-image".getBytes()
+                "file", "integration.png", "image/png", createTestImage()
         );
         MvcResult mediaResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/media")
                         .file(mediaFile)
