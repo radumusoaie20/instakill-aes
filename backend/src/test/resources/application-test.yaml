@@ -19,5 +19,4 @@ instakill:
     ttl-minutes: 60
 
 media:
-  base-path: media
-
+  base-path: media-test
