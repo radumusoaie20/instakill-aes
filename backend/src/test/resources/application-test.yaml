@@ -23,4 +23,4 @@ instakill:
       topic: instakill-test-posts
 
 media:
-  base-path: media
+  base-path: media-test
