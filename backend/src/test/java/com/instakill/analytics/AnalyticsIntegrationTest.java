@@ -90,8 +90,8 @@ class AnalyticsIntegrationTest {
         // Add 1 comment to video post
         interactionService.addComment(videoPost.id(), peerUser.id(), "Cool clip!");
 
-        // 1. Test REST API /api/analytics
-        MvcResult restResult = mockMvc.perform(get("/api/analytics").cookie(authCookie))
+        // 1. Test REST API /api/analytics/me
+        MvcResult restResult = mockMvc.perform(get("/api/analytics/me").cookie(authCookie))
                 .andExpect(status().isOk())
                 .andReturn();
 
