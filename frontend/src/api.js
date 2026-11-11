@@ -42,3 +42,6 @@ export function uploadMedia(file) {
   return client.post('/api/media', formData).then(res => res.data)
 }
 
+export function fetchAnalytics() {
+  return client.get('/api/analytics').then(res => res.data)
+}

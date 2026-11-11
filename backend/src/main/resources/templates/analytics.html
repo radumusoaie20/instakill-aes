@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:replace="~{layout :: layout('Analytics', ~{::section})}">
+    <section class="analytics-view">
+        <header class="feed-header" style="margin-bottom: 1.5rem;">
+            <h2>User Analytics</h2>
+        </header>
+
+        <!-- Requirement 5: Posts Rank in Top X% -->
+        <div class="post" style="border-left: 4px solid #2563eb;">
+            <h3 style="margin-top: 0;">Global Engagement Ranking</h3>
+            <p style="font-size: 1.15rem; margin-bottom: 0.5rem;">
+                Your posts rank in the <strong style="color: #2563eb;" th:text="'Top ' + ${analytics.engagementRanking().topPercentile()} + '%'">Top 5%</strong> of users.
+            </p>
+            <div style="display: flex; gap: 2rem; color: #4b5563; font-size: 0.95rem;">
+                <div>Rank: <strong th:text="'#' + ${analytics.engagementRanking().rank()} + ' of ' + ${analytics.engagementRanking().totalUsers()}">#1 of 100</strong></div>
+                <div>Avg Engagement: <strong th:text="${analytics.engagementRanking().userAvgEngagement()} + ' per post'">0</strong></div>
+            </div>
+        </div>
+
+        <!-- Metric Cards Row: Requirement 3 (Ratio) & Requirement 4 (Media Type) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <!-- Requirement 3: Like-to-Comment Ratio -->
+            <div class="post" style="margin-bottom: 0;">
+                <h3 style="margin-top: 0;">Like-to-Comment Ratio</h3>
+                <div style="font-size: 2rem; font-weight: 700; color: #111827; margin: 0.5rem 0;"
+                     th:text="${analytics.likeCommentRatio().ratio()} + ':1'">0:1</div>
+                <div style="color: #6b7280; font-size: 0.9rem;">
+                    <span th:text="${analytics.likeCommentRatio().totalLikes()} + ' total likes'">0 likes</span> &bull;
+                    <span th:text="${analytics.likeCommentRatio().totalComments()} + ' total comments'">0 comments</span>
+                </div>
+            </div>
+
+            <!-- Requirement 4: Average Likes by Media Type -->
+            <div class="post" style="margin-bottom: 0;">
+                <h3 style="margin-top: 0;">Avg Likes by Media Type</h3>
+                <div style="display: flex; justify-content: space-around; margin-top: 0.5rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #6b7280; text-transform: uppercase; font-weight: 600;">Photos</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" th:text="${analytics.mediaLikesStats().photoAvgLikes()}">0</div>
+                        <small style="color: #9ca3af;" th:text="${analytics.mediaLikesStats().photoPostCount()} + ' posts'">0 posts</small>
+                    </div>
+                    <div style="width: 1px; background: #e5e7eb;"></div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: #6b7280; text-transform: uppercase; font-weight: 600;">Videos</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #6366f1;" th:text="${analytics.mediaLikesStats().videoAvgLikes()}">0</div>
+                        <small style="color: #9ca3af;" th:text="${analytics.mediaLikesStats().videoPostCount()} + ' posts'">0 posts</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Requirement 2: Top 5 Posts by Engagement -->
+        <div class="post">
+            <h3 style="margin-top: 0;">Top 5 Posts by Engagement</h3>
+            <p style="color: #6b7280; font-size: 0.85rem; margin-top: -0.25rem;">Engagement = total likes + comments per post</p>
+
+            <div th:if="${#lists.isEmpty(analytics.topPosts())}" style="color: #6b7280; font-style: italic;">
+                No posts available yet.
+            </div>
+
+            <div th:unless="${#lists.isEmpty(analytics.topPosts())}">
+                <div th:each="post, iterStat : ${analytics.topPosts()}"
+                     style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span style="font-weight: 700; color: #2563eb; width: 24px;" th:text="'#' + ${iterStat.count}">#1</span>
+                        <div>
+                            <div style="font-weight: 500;" th:text="${post.content()}">Content</div>
+                            <small style="color: #9ca3af;" th:text="${#temporals.format(post.createdAt(), 'yyyy-MM-dd HH:mm')}">Date</small>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <strong style="color: #111827; font-size: 1.1rem;" th:text="${post.engagement()} + ' eng'">0 eng</strong>
+                        <div style="font-size: 0.8rem; color: #6b7280;">
+                            <span th:text="${post.likeCount()} + 'L'">0L</span> &bull;
+                            <span th:text="${post.commentCount()} + 'C'">0C</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Requirement 1: Total Posts, Likes, Comments per Week -->
+        <div class="post">
+            <h3 style="margin-top: 0;">Activity by Week of Creation</h3>
+            <div th:if="${#lists.isEmpty(analytics.weeklyStats())}" style="color: #6b7280; font-style: italic;">
+                No weekly activity recorded yet.
+            </div>
+
+            <table th:unless="${#lists.isEmpty(analytics.weeklyStats())}" style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #e5e7eb; text-align: left; color: #6b7280; font-size: 0.85rem;">
+                        <th style="padding: 0.5rem;">Week</th>
+                        <th style="padding: 0.5rem; text-align: right;">Posts</th>
+                        <th style="padding: 0.5rem; text-align: right;">Likes</th>
+                        <th style="padding: 0.5rem; text-align: right;">Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="week : ${analytics.weeklyStats()}" style="border-bottom: 1px solid #f3f4f6;">
+                        <td style="padding: 0.75rem 0.5rem; font-weight: 600;" th:text="${week.week()}">2026-W45</td>
+                        <td style="padding: 0.75rem 0.5rem; text-align: right;" th:text="${week.posts()}">0</td>
+                        <td style="padding: 0.75rem 0.5rem; text-align: right; color: #10b981; font-weight: 500;" th:text="${week.likes()}">0</td>
+                        <td style="padding: 0.75rem 0.5rem; text-align: right; color: #6366f1; font-weight: 500;" th:text="${week.comments()}">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>
