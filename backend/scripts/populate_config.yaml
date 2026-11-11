@@ -1,0 +1,34 @@
+# yaml-la
+
+# Target SQLite database file path (defaults to instakill.db on the same level as the backend folder)
+db_path: "../instakill.db"
+
+# User settings
+total_users: 10000
+
+# Post settings per user
+min_posts_per_user: 10
+max_posts_per_user: 20
+
+# Engagement per post
+min_likes_per_post: 0
+max_likes_per_post: 20
+
+min_comments_per_post: 0
+max_comments_per_post: 10
+
+# Content generation
+min_words_per_post: 1
+max_words_per_post: 10
+
+# Timestamp window (in days before today)
+days_back: 7
+
+# Performance & bulk transaction tuning
+batch_size: 10000
+
+# Optional settings
+seed: null
+skip_cleanup: false
+vacuum: false
+dry_run: false
