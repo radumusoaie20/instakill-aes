@@ -21,4 +21,6 @@ public interface UserRepository {
     User save(User user);
 
     List<User> findAll();
+
+    List<User> findAllById(Iterable<UUID> ids);
 }

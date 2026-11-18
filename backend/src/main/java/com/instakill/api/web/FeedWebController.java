@@ -12,6 +12,13 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Controller
 public class FeedWebController {
 
@@ -30,10 +37,27 @@ public class FeedWebController {
                        @RequestParam(defaultValue = "new") String sort,
                        Model model) {
         FeedSort feedSort = FeedSort.from(sort);
-        var posts = postService.listFeed(feedSort, 0, 20).stream()
-                .map(post -> PostMapper.toResponse(post, userService.getById(post.authorId()),
-                        principal != null && interactionService.hasUserLiked(post.id(), principal.id())))
-                .toList();
+        List<com.instakill.post.domain.Post> postList = postService.listFeed(feedSort, 0, 20);
+
+        List<com.instakill.post.api.rest.PostResponse> posts;
+        if (postList.isEmpty()) {
+            posts = Collections.emptyList();
+        } else {
+            Set<UUID> authorIds = postList.stream().map(com.instakill.post.domain.Post::authorId).collect(Collectors.toSet());
+            Map<UUID, com.instakill.user.domain.User> authorMap = userService.getUsersByIds(authorIds);
+            Set<UUID> likedPostIds = principal != null
+                    ? interactionService.getLikedPostIds(principal.id(), postList.stream().map(com.instakill.post.domain.Post::id).toList())
+                    : Collections.emptySet();
+
+            posts = postList.stream()
+                    .map(post -> PostMapper.toResponse(
+                            post,
+                            authorMap.get(post.authorId()),
+                            likedPostIds.contains(post.id())
+                    ))
+                    .toList();
+        }
+
         model.addAttribute("posts", posts);
         model.addAttribute("sort", feedSort.name().toLowerCase());
         return "feed";

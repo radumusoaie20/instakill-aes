@@ -22,8 +22,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -66,9 +70,23 @@ public class PostRestController {
                                        @RequestParam(defaultValue = "0") int page,
                                        @RequestParam(defaultValue = "10") int size) {
         FeedSort feedSort = FeedSort.from(sort);
-        return postService.listFeed(feedSort, page, size).stream()
-                .map(post -> PostMapper.toResponse(post, userService.getById(post.authorId()),
-                        principal != null && interactionService.hasUserLiked(post.id(), principal.id())))
+        List<Post> postList = postService.listFeed(feedSort, page, size);
+        if (postList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<UUID> authorIds = postList.stream().map(Post::authorId).collect(Collectors.toSet());
+        Map<UUID, com.instakill.user.domain.User> authorMap = userService.getUsersByIds(authorIds);
+        Set<UUID> likedPostIds = principal != null
+                ? interactionService.getLikedPostIds(principal.id(), postList.stream().map(Post::id).toList())
+                : Collections.emptySet();
+
+        return postList.stream()
+                .map(post -> PostMapper.toResponse(
+                        post,
+                        authorMap.get(post.authorId()),
+                        likedPostIds.contains(post.id())
+                ))
                 .toList();
     }
 
@@ -85,8 +103,16 @@ public class PostRestController {
     public List<CommentResponse> listComments(@PathVariable UUID id,
                                               @RequestParam(defaultValue = "0") int page,
                                               @RequestParam(defaultValue = "10") int size) {
-        return interactionService.listComments(id, page, size).stream()
-                .map(comment -> CommentMapper.toResponse(comment, userService.getById(comment.authorId())))
+        var comments = interactionService.listComments(id, page, size);
+        if (comments.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<UUID> authorIds = comments.stream().map(com.instakill.interaction.domain.Comment::authorId).collect(Collectors.toSet());
+        Map<UUID, com.instakill.user.domain.User> authorMap = userService.getUsersByIds(authorIds);
+
+        return comments.stream()
+                .map(comment -> CommentMapper.toResponse(comment, authorMap.get(comment.authorId())))
                 .toList();
     }
 

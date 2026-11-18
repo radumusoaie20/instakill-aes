@@ -14,7 +14,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "posts", indexes = {
         @Index(name = "idx_posts_author", columnList = "author_id"),
-        @Index(name = "idx_posts_created_at", columnList = "createdAt")
+        @Index(name = "idx_posts_created_at", columnList = "created_at"),
+        @Index(name = "idx_posts_trending", columnList = "like_count DESC, comment_count DESC, created_at DESC")
 })
 public class PostEntity {
 

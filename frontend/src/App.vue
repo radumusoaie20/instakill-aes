@@ -204,9 +204,17 @@ async function submitAuth() {
 
 async function loadFeed() {
   posts.value = await listFeed({ sort: sort.value })
-  // Load comments for each post
+  // Load comments only for posts that have comments, and load them in parallel
+  const loadTasks = []
   for (const post of posts.value) {
-    await loadComments(post.id)
+    if (post.commentCount > 0) {
+      loadTasks.push(loadComments(post.id))
+    } else {
+      comments[post.id] = []
+    }
+  }
+  if (loadTasks.length > 0) {
+    await Promise.allSettled(loadTasks)
   }
 }
 

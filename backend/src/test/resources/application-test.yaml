@@ -1,7 +1,12 @@
 spring:
+  threads:
+    virtual:
+      enabled: true
   datasource:
     url: jdbc:sqlite:file:memdb1?mode=memory&cache=shared
     driver-class-name: org.sqlite.JDBC
+    hikari:
+      connection-init-sql: "PRAGMA busy_timeout=5000;"
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:
