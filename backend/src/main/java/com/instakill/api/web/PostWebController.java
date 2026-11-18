@@ -81,8 +81,13 @@ public class PostWebController {
         var post = postService.getPost(id);
         var postResponse = PostMapper.toResponse(post, userService.getById(post.authorId()),
                 principal != null && interactionService.hasUserLiked(id, principal.id()));
-        var comments = interactionService.listComments(id, 0, 50).stream()
-                .map(comment -> CommentMapper.toResponse(comment, userService.getById(comment.authorId())))
+        var commentList = interactionService.listComments(id, 0, 50);
+        java.util.Set<java.util.UUID> authorIds = commentList.stream()
+                .map(com.instakill.interaction.domain.Comment::authorId)
+                .collect(java.util.stream.Collectors.toSet());
+        var authorMap = userService.getUsersByIds(authorIds);
+        var comments = commentList.stream()
+                .map(comment -> CommentMapper.toResponse(comment, authorMap.get(comment.authorId())))
                 .toList();
         model.addAttribute("post", postResponse);
         model.addAttribute("comments", comments);

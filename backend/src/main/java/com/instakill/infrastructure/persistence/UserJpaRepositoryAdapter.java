@@ -63,4 +63,12 @@ public class UserJpaRepositoryAdapter implements UserRepository {
     public List<User> findAll() {
         return repository.findAll().stream().map(UserMapper::toDomain).toList();
     }
+
+    @Override
+    public List<User> findAllById(Iterable<UUID> ids) {
+        if (ids == null) {
+            return List.of();
+        }
+        return repository.findAllById(ids).stream().map(UserMapper::toDomain).toList();
+    }
 }

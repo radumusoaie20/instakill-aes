@@ -1,7 +1,12 @@
 spring:
+  threads:
+    virtual:
+      enabled: true
   datasource:
     url: jdbc:sqlite:./instakill.db
     driver-class-name: org.sqlite.JDBC
+    hikari:
+      connection-init-sql: "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; PRAGMA synchronous=NORMAL;"
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
     hibernate:

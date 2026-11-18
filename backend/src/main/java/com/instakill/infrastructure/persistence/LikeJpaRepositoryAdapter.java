@@ -7,7 +7,10 @@ import com.instakill.interaction.domain.LikeRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -45,5 +48,13 @@ public class LikeJpaRepositoryAdapter implements LikeRepository {
     @Override
     public boolean existsByPostIdAndUserId(UUID postId, UUID userId) {
         return repository.existsByPostIdAndUserId(postId, userId);
+    }
+
+    @Override
+    public Set<UUID> findLikedPostIds(UUID userId, Collection<UUID> postIds) {
+        if (userId == null || postIds == null || postIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return repository.findLikedPostIdsByUserIdAndPostIdIn(userId, postIds);
     }
 }

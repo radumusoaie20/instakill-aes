@@ -1,4 +1,6 @@
 bin
 /media/
 /instakill.db
+/instakill.db-shm
+/instakill.db-wal
 /media-test/
