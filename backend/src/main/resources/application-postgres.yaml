@@ -8,6 +8,7 @@ spring:
     username: instakill
     password: instakill
     hikari:
+      connection-init-sql: ""
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000

@@ -23,6 +23,11 @@ except ImportError:
 
 DEFAULT_CONFIG_FILE = "populate_config.yaml"
 
+
+def _ms_to_dt(epoch_ms: int) -> datetime.datetime:
+    """Convert epoch-milliseconds to a timezone-aware datetime (UTC)."""
+    return datetime.datetime.fromtimestamp(epoch_ms / 1000.0, tz=datetime.timezone.utc)
+
 DEFAULT_CONFIG = {
     # SQLite (legacy) settings
     "db_path": "instakill.db",
@@ -342,7 +347,7 @@ class PostgreSQLBackend(DatabaseBackend):
         self.cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id varchar(36) NOT NULL,
-            created_at bigint NOT NULL,
+            created_at timestamp(6) with time zone NOT NULL,
             email varchar(255) NOT NULL,
             password_hash varchar(255) NOT NULL,
             username varchar(255) NOT NULL,
@@ -357,10 +362,10 @@ class PostgreSQLBackend(DatabaseBackend):
             author_id varchar(36) NOT NULL,
             comment_count bigint NOT NULL,
             content varchar(1000) NOT NULL,
-            created_at bigint NOT NULL,
+            created_at timestamp(6) with time zone NOT NULL,
             image_url varchar(2048),
             like_count bigint NOT NULL,
-            updated_at bigint NOT NULL,
+            updated_at timestamp(6) with time zone NOT NULL,
             PRIMARY KEY (id),
             CONSTRAINT fk_posts_author FOREIGN KEY (author_id) REFERENCES users (id)
         );
@@ -368,7 +373,7 @@ class PostgreSQLBackend(DatabaseBackend):
         self.cur.execute("""
         CREATE TABLE IF NOT EXISTS likes (
             id varchar(36) NOT NULL,
-            created_at bigint NOT NULL,
+            created_at timestamp(6) with time zone NOT NULL,
             post_id varchar(36) NOT NULL,
             user_id varchar(36) NOT NULL,
             PRIMARY KEY (id),
@@ -381,7 +386,7 @@ class PostgreSQLBackend(DatabaseBackend):
             id varchar(36) NOT NULL,
             author_id varchar(36) NOT NULL,
             content varchar(500) NOT NULL,
-            created_at bigint NOT NULL,
+            created_at timestamp(6) with time zone NOT NULL,
             post_id varchar(36) NOT NULL,
             PRIMARY KEY (id),
             CONSTRAINT fk_comments_post FOREIGN KEY (post_id) REFERENCES posts (id),
@@ -425,34 +430,55 @@ class PostgreSQLBackend(DatabaseBackend):
 
     def insert_users(self, rows: list):
         import psycopg2.extras
+        # rows come in as (id, created_at_ms, email, password_hash, username)
+        # convert epoch-ms -> datetime for PostgreSQL
+        converted = [
+            (r[0], _ms_to_dt(r[1]), r[2], r[3], r[4])
+            for r in rows
+        ]
         psycopg2.extras.execute_values(
             self.cur,
             "INSERT INTO users (id, created_at, email, password_hash, username) VALUES %s ON CONFLICT DO NOTHING",
-            rows
+            converted
         )
 
     def insert_posts(self, rows: list):
         import psycopg2.extras
+        # rows: (id, author_id, comment_count, content, created_at_ms, image_url, like_count, updated_at_ms)
+        converted = [
+            (r[0], r[1], r[2], r[3], _ms_to_dt(r[4]), r[5], r[6], _ms_to_dt(r[7]))
+            for r in rows
+        ]
         psycopg2.extras.execute_values(
             self.cur,
             "INSERT INTO posts (id, author_id, comment_count, content, created_at, image_url, like_count, updated_at) VALUES %s",
-            rows
+            converted
         )
 
     def insert_likes(self, rows: list):
         import psycopg2.extras
+        # rows: (id, created_at_ms, post_id, user_id)
+        converted = [
+            (r[0], _ms_to_dt(r[1]), r[2], r[3])
+            for r in rows
+        ]
         psycopg2.extras.execute_values(
             self.cur,
             "INSERT INTO likes (id, created_at, post_id, user_id) VALUES %s ON CONFLICT DO NOTHING",
-            rows
+            converted
         )
 
     def insert_comments(self, rows: list):
         import psycopg2.extras
+        # rows: (id, author_id, content, created_at_ms, post_id)
+        converted = [
+            (r[0], r[1], r[2], _ms_to_dt(r[3]), r[4])
+            for r in rows
+        ]
         psycopg2.extras.execute_values(
             self.cur,
             "INSERT INTO comments (id, author_id, content, created_at, post_id) VALUES %s",
-            rows
+            converted
         )
 
     def commit(self):

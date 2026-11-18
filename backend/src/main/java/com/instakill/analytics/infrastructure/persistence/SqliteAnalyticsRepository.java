@@ -7,6 +7,7 @@ import com.instakill.analytics.domain.MediaLikesStats;
 import com.instakill.analytics.domain.PostEngagement;
 import com.instakill.analytics.domain.UserAnalytics;
 import com.instakill.analytics.domain.WeeklyStats;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -16,11 +17,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public class SqlAnalyticsRepository implements AnalyticsRepository {
+@Profile("!postgres")
+public class SqliteAnalyticsRepository implements AnalyticsRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
-    public SqlAnalyticsRepository(NamedParameterJdbcTemplate jdbcTemplate) {
+    public SqliteAnalyticsRepository(NamedParameterJdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
