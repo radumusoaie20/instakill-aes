@@ -1,9 +1,23 @@
-# yaml-la
+# -------------------------------------------------------------------------
+# populate_config.yaml - Instakill DB Populator configuration
+# -------------------------------------------------------------------------
 
-# Target SQLite database file path (defaults to instakill.db on the same level as the backend folder)
+# Backend selection: "sqlite" or "postgres"
+backend: "sqlite"
+
+# --- SQLite settings (used when backend = sqlite) ---
 db_path: "../instakill.db"
 
+# --- PostgreSQL settings (used when backend = postgres) ---
+pg_host: "localhost"
+pg_port: 5432
+pg_dbname: "instakill"
+pg_user: "instakill"
+pg_password: "instakill"
+
+# -------------------------------------------------------------------------
 # User settings
+# -------------------------------------------------------------------------
 total_users: 10000
 
 # Post settings per user
