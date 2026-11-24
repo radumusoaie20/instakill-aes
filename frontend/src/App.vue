@@ -1,5 +1,12 @@
 <template>
   <div class="app-shell">
+    <!-- Toast Notification -->
+    <transition name="toast-fade">
+      <div v-if="toastMessage" class="toast-popup">
+        {{ toastMessage }}
+      </div>
+    </transition>
+
     <header class="app-header">
       <h1>Instakill</h1>
       <nav v-if="user" class="nav-menu">
@@ -187,6 +194,40 @@
         <form @submit.prevent="createNewPost" class="card form composer">
           <textarea v-model="composer.content" rows="3" placeholder="Share something..." required></textarea>
 
+          <div class="funnyfy-toolbar">
+            <button
+              type="button"
+              class="funnyfy-btn"
+              :class="{ loading: isFunnyfying }"
+              @click="handleMakeFunnier"
+              :disabled="isFunnyfying || !composer.content || !composer.content.trim()"
+              title="Transform this caption into a funnier version using local LLM"
+            >
+              <span v-if="isFunnyfying" class="btn-spinner"></span>
+              <span v-else class="btn-icon">✨</span>
+              <span>{{ isFunnyfying ? 'Making it funnier...' : 'Make It Funnier' }}</span>
+            </button>
+
+            <button
+              v-if="previousContent !== null"
+              type="button"
+              class="undo-funny-btn"
+              @click="undoFunnier"
+              title="Restore previous text"
+            >
+              ↺ Undo
+            </button>
+
+            <span v-if="funnyfyModelUsed" class="funnyfy-model-tag" title="Model used by local LLM">
+              via {{ funnyfyModelUsed }}
+            </span>
+          </div>
+
+          <div v-if="funnyfyError" class="funnyfy-error-banner">
+            <span class="error-text">⚠️ {{ funnyfyError }}</span>
+            <button type="button" class="dismiss-error-btn" @click="funnyfyError = ''" title="Dismiss">✕</button>
+          </div>
+
           <div class="file-upload-row">
             <label class="file-input-label">Attach Media (Image / Video):</label>
             <input
@@ -287,7 +328,8 @@ import {
   listComments,
   addComment,
   uploadMedia,
-  fetchAnalytics
+  fetchAnalytics,
+  funnyfyText
 } from './api'
 
 const user = ref(null)
@@ -301,6 +343,60 @@ const composer = reactive({ content: '', imageUrl: '' })
 const isUploading = ref(false)
 const uploadError = ref('')
 const fileInputRef = ref(null)
+
+// Make It Funnier (Local LLM) state
+const isFunnyfying = ref(false)
+const funnyfyError = ref('')
+const previousContent = ref(null)
+const funnyfyModelUsed = ref('')
+const toastMessage = ref('')
+let toastTimer = null
+
+function showToast(msg) {
+  toastMessage.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toastMessage.value = ''
+  }, 3500)
+}
+
+async function handleMakeFunnier() {
+  const currentText = composer.content ? composer.content.trim() : ''
+  if (!currentText || isFunnyfying.value) return
+
+  funnyfyError.value = ''
+  isFunnyfying.value = true
+  const original = composer.content
+
+  try {
+    const res = await funnyfyText(currentText)
+    const newText = res.funnyText || res.text || ''
+    if (newText) {
+      previousContent.value = original
+      composer.content = newText
+      funnyfyModelUsed.value = res.model || ''
+      showToast('Your post just got funnier 😂')
+    }
+  } catch (err) {
+    const detail =
+      err.response?.data?.detail ||
+      err.response?.data?.message ||
+      err.message ||
+      'Failed to make post funnier. Please ensure LM Studio is running on port 12345.'
+    funnyfyError.value = detail
+  } finally {
+    isFunnyfying.value = false
+  }
+}
+
+function undoFunnier() {
+  if (previousContent.value !== null) {
+    composer.content = previousContent.value
+    previousContent.value = null
+    funnyfyModelUsed.value = ''
+    showToast('Restored previous caption')
+  }
+}
 
 // Analytics state
 const analytics = ref(null)
@@ -444,6 +540,9 @@ async function createNewPost() {
   composer.content = ''
   composer.imageUrl = ''
   uploadError.value = ''
+  previousContent.value = null
+  funnyfyModelUsed.value = ''
+  funnyfyError.value = ''
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }
@@ -1009,5 +1108,148 @@ async function logout() {
 
 .error-box {
   text-align: center;
+}
+
+/* Make It Funnier / LLM feature styles */
+.funnyfy-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.funnyfy-btn {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.funnyfy-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.funnyfy-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon {
+  font-size: 1rem;
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: funnyfy-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes funnyfy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.undo-funny-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.undo-funny-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.funnyfy-model-tag {
+  font-size: 0.75rem;
+  color: #0369a1;
+  background: #e0f2fe;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  border: 1px solid #bae6fd;
+}
+
+.funnyfy-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.dismiss-error-btn {
+  background: transparent;
+  border: none;
+  color: #991b1b;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  margin-left: 0.5rem;
+  line-height: 1;
+}
+
+.dismiss-error-btn:hover {
+  color: #000;
+}
+
+.toast-popup {
+  position: fixed;
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #ffffff;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -15px);
 }
 </style>

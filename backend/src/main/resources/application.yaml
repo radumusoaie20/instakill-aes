@@ -39,6 +39,16 @@ instakill:
     ntfy:
       url: https://ntfy.sh
       topic: instakill-cool-posts
+  llm:
+    url: ${LOCAL_LLM_URL:}
+    host: ${LOCAL_LLM_HOST:localhost}
+    port: ${LOCAL_LLM_PORT:12345}
+    preferred-model: ${LOCAL_LLM_MODEL:google/gemma-3-270m}
+    strategy: ${LOCAL_LLM_STRATEGY:smart}
+    timeout-seconds: ${LOCAL_LLM_TIMEOUT_SECONDS:30}
+    temperature: ${LOCAL_LLM_TEMPERATURE:0.7}
+    max-tokens: ${LOCAL_LLM_MAX_TOKENS:256}
+    system-prompt: ${LOCAL_LLM_SYSTEM_PROMPT:Always reply with the user's message, but rewritten in a more funny style.}
 logging:
   level:
     org.hibernate.SQL: warn

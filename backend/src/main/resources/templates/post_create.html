@@ -7,8 +7,19 @@
         <form th:action="@{/posts}" th:object="${postForm}" method="post" class="form">
             <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <label>Content
-                <textarea th:field="*{content}" rows="4"></textarea>
+                <textarea th:field="*{content}" id="postContent" rows="4"></textarea>
             </label>
+            <div style="margin: 0.35rem 0 0.75rem 0; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" id="funnyfyBtn" style="background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; border: none; padding: 0.45rem 0.85rem; border-radius: 6px; font-weight: 600; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <span id="funnyfySpinner" style="display: none;">⏳</span>
+                    <span id="funnyfyIcon">✨</span>
+                    <span id="funnyfyText">Make It Funnier</span>
+                </button>
+                <button type="button" id="funnyfyUndoBtn" style="display: none; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.82rem; font-weight: 600; cursor: pointer;">
+                    ↺ Undo
+                </button>
+                <div id="funnyfyStatus" style="font-size: 0.85rem; display: none;"></div>
+            </div>
             <div class="error" th:if="${#fields.hasErrors('content')}" th:errors="*{content}"></div>
             <label>Upload Media (Image / Video)
                 <input type="file" id="mediaUploadInput" accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm"/>
@@ -52,6 +63,84 @@
                         statusDiv.style.color = 'red';
                     }
                 });
+            }
+
+            // Make It Funnier Handler
+            const funnyfyBtn = document.getElementById('funnyfyBtn');
+            const funnyfyUndoBtn = document.getElementById('funnyfyUndoBtn');
+            const funnyfySpinner = document.getElementById('funnyfySpinner');
+            const funnyfyIcon = document.getElementById('funnyfyIcon');
+            const funnyfyText = document.getElementById('funnyfyText');
+            const funnyfyStatus = document.getElementById('funnyfyStatus');
+            const postContent = document.getElementById('postContent');
+            let previousCaption = null;
+
+            if (funnyfyBtn && postContent) {
+                funnyfyBtn.addEventListener('click', async () => {
+                    const text = postContent.value.trim();
+                    if (!text) {
+                        funnyfyStatus.style.display = 'block';
+                        funnyfyStatus.innerText = 'Please write some content first!';
+                        funnyfyStatus.style.color = '#ef4444';
+                        return;
+                    }
+
+                    funnyfyBtn.disabled = true;
+                    funnyfySpinner.style.display = 'inline-block';
+                    funnyfyIcon.style.display = 'none';
+                    funnyfyText.innerText = 'Making it funnier...';
+                    funnyfyStatus.style.display = 'none';
+
+                    const original = postContent.value;
+
+                    try {
+                        const response = await fetch('/api/funnyfy', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text }),
+                            credentials: 'include'
+                        });
+
+                        if (!response.ok) {
+                            const errData = await response.json().catch(() => ({}));
+                            throw new Error(errData.detail || errData.message || 'Failed to make post funnier');
+                        }
+
+                        const data = await response.json();
+                        previousCaption = original;
+                        postContent.value = data.funnyText || data.text || '';
+
+                        funnyfyStatus.style.display = 'block';
+                        funnyfyStatus.innerText = 'Your post just got funnier 😂 (via ' + (data.model || 'local LLM') + ')';
+                        funnyfyStatus.style.color = '#059669';
+
+                        if (funnyfyUndoBtn) {
+                            funnyfyUndoBtn.style.display = 'inline-block';
+                        }
+                    } catch (err) {
+                        funnyfyStatus.style.display = 'block';
+                        funnyfyStatus.innerText = '⚠️ ' + (err.message || 'Local LLM server unavailable.');
+                        funnyfyStatus.style.color = '#dc2626';
+                    } finally {
+                        funnyfyBtn.disabled = false;
+                        funnyfySpinner.style.display = 'none';
+                        funnyfyIcon.style.display = 'inline-block';
+                        funnyfyText.innerText = 'Make It Funnier';
+                    }
+                });
+
+                if (funnyfyUndoBtn) {
+                    funnyfyUndoBtn.addEventListener('click', () => {
+                        if (previousCaption !== null) {
+                            postContent.value = previousCaption;
+                            previousCaption = null;
+                            funnyfyUndoBtn.style.display = 'none';
+                            funnyfyStatus.style.display = 'block';
+                            funnyfyStatus.innerText = 'Restored previous text.';
+                            funnyfyStatus.style.color = '#6b7280';
+                        }
+                    });
+                }
             }
         </script>
     </section>

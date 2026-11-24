@@ -7,6 +7,7 @@ import com.instakill.common.error.InstakillException;
 import com.instakill.common.error.NotFoundException;
 import com.instakill.common.error.UnauthorizedException;
 import com.instakill.common.error.ValidationException;
+import com.instakill.llm.domain.LlmServiceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.validation.FieldError;
@@ -57,6 +58,14 @@ public class RestExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());
         problem.setTitle(status.getReasonPhrase());
         problem.setType(URI.create("https://instakill.dev/errors/" + status.value()));
+        return problem;
+    }
+
+    @ExceptionHandler(LlmServiceException.class)
+    public ProblemDetail handleLlmService(LlmServiceException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        problem.setTitle("LLM Service Unavailable");
+        problem.setType(URI.create("https://instakill.dev/errors/llm-unavailable"));
         return problem;
     }
 
